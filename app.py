@@ -229,37 +229,82 @@ with tabs[0]:
 
 # ----------------- TAB 2: Live Match Center -----------------
 with tabs[1]:
-    st.markdown(f"### ⚡ Live Fixtures, Match Momentum & Telemetry — {chosen_league}")
+    st.markdown(f"### ⚡ Real-Time Live Match Center & Matchday Telemetry — {chosen_league}")
+    
+    col_f1, col_f2 = st.columns([3, 1])
+    with col_f1:
+        match_filter = st.radio(
+            "Filter Fixtures:",
+            ["All Fixtures", "🔴 Live Matches", "🟢 Finished (FT)", "🕒 Upcoming Matches"],
+            horizontal=True,
+            key="match_status_filter"
+        )
+    with col_f2:
+        st.markdown(f"<div style='text-align:right; font-size:0.85rem; color:#34d399; padding-top:14px;'>🟢 <b>10s Live Sync Active</b> (Cycle #{refresh_counter})</div>", unsafe_allow_html=True)
+
     matches_list = MatchesEngine.get_league_matches(chosen_league)
 
-    for m in matches_list:
-        is_live = m["status"] == "LIVE"
-        status_badge = f'<span style="background:#ef4444; color:white; padding:3px 8px; border-radius:4px; font-weight:bold;"><span class="live-dot"></span>LIVE {m["minute"]}</span>' if is_live else (
-            f'<span style="background:#10b981; color:white; padding:3px 8px; border-radius:4px; font-weight:bold;">FULL TIME</span>' if m["status"] == "FT" else f'<span style="background:#334155; color:#94a3b8; padding:3px 8px; border-radius:4px;">{m["minute"]}</span>'
-        )
+    if match_filter == "🔴 Live Matches":
+        displayed_matches = [m for m in matches_list if m.get("status") == "LIVE"]
+    elif match_filter == "🟢 Finished (FT)":
+        displayed_matches = [m for m in matches_list if m.get("status") == "FT"]
+    elif match_filter == "🕒 Upcoming Matches":
+        displayed_matches = [m for m in matches_list if m.get("status") == "UPCOMING"]
+    else:
+        displayed_matches = matches_list
 
-        st.markdown(f"""
-        <div class="match-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
-                <span style="color:#94a3b8; font-size:0.85rem;">🏟️ {m['stadium']} | 👨‍⚖️ Ref: {m['referee']}</span>
-                {status_badge}
-            </div>
-            <div style="display:flex; justify-content:space-around; align-items:center; text-align:center;">
-                <div style="width:40%;">
-                    <h2 style="margin:0; color:#f8fafc;">{m['home_team']}</h2>
-                    <span style="color:#38bdf8; font-size:0.9rem;">xG: {m['xg_home']} &bull; Poss: {m['possession_home']}%</span>
-                </div>
-                <div style="width:20%; font-size:2.4rem; font-weight:800; color:#f59e0b;">
-                    {m['score_home']} - {m['score_away']}
-                </div>
-                <div style="width:40%;">
-                    <h2 style="margin:0; color:#f8fafc;">{m['away_team']}</h2>
-                    <span style="color:#38bdf8; font-size:0.9rem;">xG: {m['xg_away']} &bull; Poss: {m['possession_away']}%</span>
-                </div>
-            </div>
-            {f"<hr style='border-color:rgba(148,163,184,0.15); margin:0.8rem 0;'><div style='font-size:0.85rem; color:#cbd5e1;'><b>⚽ Key Events:</b> " + ' | '.join(m['events']) + "</div>" if m['events'] else ""}
-        </div>
-        """, unsafe_allow_html=True)
+    if not displayed_matches:
+        st.info(f"No matches currently matching the '{match_filter}' filter in {chosen_league}. Switch to 'All Fixtures' to view the complete schedule.")
+    else:
+        for m in displayed_matches:
+            is_live = m["status"] == "LIVE"
+            if is_live:
+                status_badge = f'<span style="background:#ef4444; color:white; padding:4px 10px; border-radius:6px; font-weight:800; font-size:0.85rem;"><span class="live-dot"></span>LIVE {m["minute"]}</span>'
+            elif m["status"] == "FT":
+                status_badge = '<span style="background:#10b981; color:white; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.85rem;">🟢 FULL TIME</span>'
+            else:
+                status_badge = f'<span style="background:#334155; color:#94a3b8; padding:4px 10px; border-radius:6px; font-weight:600; font-size:0.85rem;">🕒 {m["minute"]}</span>'
+
+            home_logo_html = f'<img src="{m.get("home_logo", "")}" style="width:44px; height:44px; object-fit:contain; margin-right:10px;" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';"/>' if m.get("home_logo") else ''
+            away_logo_html = f'<img src="{m.get("away_logo", "")}" style="width:44px; height:44px; object-fit:contain; margin-left:10px;" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';"/>' if m.get("away_logo") else ''
+
+            events_html = ""
+            if m.get("events"):
+                events_html = f"<div style='font-size:0.85rem; color:#cbd5e1; border-top:1px solid rgba(148,163,184,0.15); margin-top:0.9rem; padding-top:0.7rem;'><b>⚽ Match Timeline & Events:</b> " + ' &bull; '.join(m['events']) + "</div>"
+
+            card_html = (
+                f'<div class="match-card">'
+                f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.9rem; border-bottom:1px solid rgba(148,163,184,0.12); padding-bottom:0.6rem;">'
+                f'<span style="color:#94a3b8; font-size:0.85rem;">🏟️ {m.get("stadium", "Main Stadium")} | 👨‍⚖️ {m.get("referee", "FIFA Elite")}</span>'
+                f'{status_badge}'
+                f'</div>'
+                f'<div style="display:flex; justify-content:space-between; align-items:center; text-align:center;">'
+                f'<div style="width:38%; display:flex; align-items:center; justify-content:flex-end;">'
+                f'<div style="text-align:right;">'
+                f'<h3 style="margin:0; color:#f8fafc; font-size:1.3rem;">{m["home_team"]}</h3>'
+                f'<span style="color:#38bdf8; font-size:0.85rem;">xG: {m.get("xg_home", 0.0)} &bull; Poss: {m.get("possession_home", 50)}%</span>'
+                f'</div>'
+                f'{home_logo_html}'
+                f'</div>'
+                f'<div style="width:24%; text-align:center;">'
+                f'<div style="font-size:2.4rem; font-weight:900; color:#f59e0b; letter-spacing:2px; line-height:1;">{m["score_home"]} - {m["score_away"]}</div>'
+                f'<div style="display:flex; height:5px; border-radius:3px; overflow:hidden; margin:8px auto 0; width:120px; background:#334155;">'
+                f'<div style="width:{m.get("possession_home", 50)}%; background:#38bdf8;"></div>'
+                f'<div style="width:{m.get("possession_away", 50)}%; background:#f59e0b;"></div>'
+                f'</div>'
+                f'</div>'
+                f'<div style="width:38%; display:flex; align-items:center; justify-content:flex-start;">'
+                f'{away_logo_html}'
+                f'<div style="text-align:left;">'
+                f'<h3 style="margin:0; color:#f8fafc; font-size:1.3rem;">{m["away_team"]}</h3>'
+                f'<span style="color:#f59e0b; font-size:0.85rem;">Poss: {m.get("possession_away", 50)}% &bull; xG: {m.get("xg_away", 0.0)}</span>'
+                f'</div>'
+                f'</div>'
+                f'</div>'
+                f'{events_html}'
+                f'</div>'
+            )
+            st.markdown(card_html, unsafe_allow_html=True)
 
 # ----------------- TAB 3: Golden Boot & Playmakers -----------------
 with tabs[2]:
