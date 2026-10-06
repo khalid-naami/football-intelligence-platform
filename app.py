@@ -8,7 +8,11 @@ import datetime
 import pandas as pd
 import numpy as np
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
+try:
+    from streamlit_autorefresh import st_autorefresh
+except ImportError:
+    def st_autorefresh(*args, **kwargs):
+        return 0
 
 from src.leagues_database import LeaguesManager, LEAGUES_DATABASE
 from src.matches_engine import MatchesEngine
