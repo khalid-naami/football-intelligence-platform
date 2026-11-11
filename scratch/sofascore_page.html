@@ -1,0 +1,167 @@
+<html lang="en"><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Sofascore</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --text: #222226;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #15151a;
+          --text: #e6e6ea;
+        }
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 0 16px;
+        box-sizing: border-box;
+        font-family:
+          system-ui,
+          -apple-system,
+          Arial,
+          sans-serif;
+        font-size: 16px;
+        text-align: center;
+      }
+      #message {
+        margin: 0;
+      }
+    </style>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&amp;onload=onTurnstileLoad" async="" defer=""></script></head>
+  <body>
+    <!-- Usage: /captcha.html?redirectUrl=<same-origin URL> -->
+    <div id="widget"><div><div></div><input type="hidden" name="cf-turnstile-response" id="cf-chl-widget-7r889_response"></div></div>
+    <p id="message">Verifying you are human…</p>
+
+    <script>
+      ;(function () {
+        var SITEKEY = '0x4AAAAAADcoqB6O4KpaoADv'
+        var STORAGE_KEY = 'sofa.captcha.token'
+        var COOKIE_NAME = 'sofa_captcha'
+        var DENIED = 'Access denied. Verification failed, please refresh the page to try again.'
+        var COOKIES_DISABLED = 'Access denied. Please enable cookies in your browser and refresh the page.'
+        var API_URL = 'https://www.sofascore.com/api/v1'
+
+        var messageEl = document.getElementById('message')
+
+        function setMessage(text) {
+          messageEl.textContent = text
+        }
+
+        function getRedirectUrl() {
+          var value = new URLSearchParams(window.location.search).get('redirectUrl')
+          if (!value) return null
+          try {
+            var url = new URL(value, window.location.origin)
+            if (url.origin !== window.location.origin) return null
+            if (url.pathname === window.location.pathname) return null
+            return url
+          } catch (e) {
+            return null
+          }
+        }
+
+        var redirectUrl = getRedirectUrl()
+        if (!redirectUrl) {
+          setMessage('Access denied.')
+          return
+        }
+
+        if (!navigator.cookieEnabled) {
+          setMessage(COOKIES_DISABLED)
+          return
+        }
+
+        function hasCookie(name) {
+          var cookies = document.cookie.split('; ')
+          for (var i = 0; i < cookies.length; i++) {
+            if (cookies[i].indexOf(name + '=') === 0) return true
+          }
+          return false
+        }
+
+        function getMaxAgeSeconds(jwt) {
+          var base64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+          var padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+          var exp = JSON.parse(atob(padded)).exp
+          return Math.max(0, Math.floor(exp - Date.now() / 1000))
+        }
+
+        function fail(reason) {
+          console.error('Captcha verification failed', reason)
+          setMessage(DENIED)
+        }
+
+        function onSolved(token) {
+          fetch(API_URL + '/token/captcha', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ response: token, provider: 'turnstile' }),
+          })
+            .then(function (response) {
+              if (!response.ok) throw new Error(String(response.status))
+              return response.json()
+            })
+            .then(function (data) {
+              if (!data || !data.token) throw new Error('missing token')
+              // store.js serializes values as JSON; the app reads this key via readFromStorage
+              window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data.token))
+              // The edge reads this cookie on HTML navigations, which cannot carry X-Captcha
+              document.cookie =
+                COOKIE_NAME +
+                '=' +
+                data.token +
+                '; Path=/; Secure; SameSite=Lax; Max-Age=' +
+                getMaxAgeSeconds(data.token)
+              if (!hasCookie(COOKIE_NAME)) {
+                setMessage(COOKIES_DISABLED)
+                return
+              }
+              window.location.replace(redirectUrl.href)
+            })
+            .catch(fail)
+        }
+
+        window.onTurnstileLoad = function () {
+          var widgetId = turnstile.render('#widget', {
+            sitekey: SITEKEY,
+            callback: onSolved,
+            'error-callback': fail,
+            'timeout-callback': fail,
+            'unsupported-callback': fail,
+            'expired-callback': function () {
+              turnstile.reset(widgetId)
+            },
+          })
+        }
+
+        setMessage('Verifying you are human…')
+
+        var script = document.createElement('script')
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad'
+        script.async = true
+        script.defer = true
+        script.onerror = function () {
+          fail('script load error')
+        }
+        document.head.appendChild(script)
+      })()
+    </script>
+  
+
+</body></html>
